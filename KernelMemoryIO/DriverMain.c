@@ -80,21 +80,15 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING pRegistryPath
 
 PUCHAR BytesToPtr(PVOID ioBuffer)
 {
-    int ptrSize = sizeof(void*);
     PUCHAR copyPtr = NULL;
 
-    if (ptrSize == 8)
-    {
-        memcpy(&(__int64)copyPtr, ioBuffer, 8);
-        return copyPtr;
-    }
-    else
-    {
-#pragma warning(disable: 4311 4302)
-        memcpy(&(int)copyPtr, ioBuffer, 4);
-#pragma warning(default: 4311 4302)
-        return copyPtr;
-    }
+#if defined(_AMD64_)
+    memcpy(&(__int64)copyPtr, ioBuffer, 8);
+#else
+    memcpy(&copyPtr, ioBuffer, 8);
+#endif
+
+    return copyPtr;
 }
 
 NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)

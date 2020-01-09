@@ -5,16 +5,26 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 using System.Threading;
 using System.Media;
+using KernelStructOffset;
 
 namespace MemoryIOLib
 {
     class Program
     {
+        // Prerequisite:
+        //  Register and start "KernelMemoryIO" kernel driver
+        //  https://github.com/stjeong/KernelMemoryIO/tree/master/KernelMemoryIO
+        //
+        // sc create "KernelMemoryIO" binPath= "D:\Debug\KernelMemoryIO.sys" type= kernel start= demand
+        // sc delete "KernelMemoryIO"
+        // net start KernelMemoryIO
+        // net stop KernelMemoryIO
+
         static void Main(string[] args)
         {
             Console.WriteLine("Version 1.0");
 
-            using (MemoryIOLib memoryIO = new MemoryIOLib())
+            using (KernelMemoryIO memoryIO = new KernelMemoryIO())
             {
                 if (memoryIO.IsInitialized == false)
                 {
