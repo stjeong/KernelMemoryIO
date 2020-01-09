@@ -67,7 +67,7 @@ namespace MemoryIOLib
                     IntPtr kprocessPosPtr = kthreadOffset.GetPointer(ethreadPtr, "Process");
 
                     IntPtr kprocessPtr = memoryIO.ReadMemory<IntPtr>(kprocessPosPtr);
-                    Console.WriteLine($"_EPROCESS: {kprocessPtr} ({kprocessPtr:x})");
+                    Console.WriteLine($"_EPROCESS: {kprocessPtr} ({kprocessPtr.ToInt64():x})");
 
                     {
                         // +0x3d0 Cookie : Uint4B
