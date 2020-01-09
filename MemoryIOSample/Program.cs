@@ -58,8 +58,8 @@ namespace MemoryIOLib
                         return;
                     }
 
-                    Console.WriteLine("PID: " + cid.UniqueProcess + "(" + cid.UniqueProcess.ToString("x") + ")");
-                    Console.WriteLine("TID: " + cid.UniqueThread + "(" + cid.UniqueThread.ToString("x") + ")");
+                    Console.WriteLine($"PID: {cid.Pid} ({cid.Pid:x})");
+                    Console.WriteLine($"TID: {cid.Tid} ({cid.Tid:x})");
                 }
 
                 {
@@ -67,29 +67,29 @@ namespace MemoryIOLib
                     IntPtr kprocessPosPtr = kthreadOffset.GetPointer(ethreadPtr, "Process");
 
                     IntPtr kprocessPtr = memoryIO.ReadMemory<IntPtr>(kprocessPosPtr);
-                    Console.WriteLine("_EPROCESS: " + kprocessPtr + "(" + kprocessPtr.ToString("x") + ")");
+                    Console.WriteLine($"_EPROCESS: {kprocessPtr} ({kprocessPtr:x})");
 
                     {
                         // +0x3d0 Cookie : Uint4B
                         IntPtr cookiePtr = eprocessOffset.GetPointer(kprocessPtr, "Cookie");
                         int oldCookie = memoryIO.ReadMemory<int>(cookiePtr);
-                        Console.WriteLine("[OLD] _EPROCESS.cookie: " + oldCookie + "(" + oldCookie.ToString("x") + ")");
+                        Console.WriteLine($"[OLD] _EPROCESS.cookie: {oldCookie}({oldCookie:x})");
 
                         int writtenBytes = memoryIO.WriteMemory<int>(cookiePtr, 0x5000);
                         Console.WriteLine("Written = " + writtenBytes);
 
                         int newCookie = memoryIO.ReadMemory<int>(cookiePtr);
-                        Console.WriteLine("[NEW] _EPROCESS.cookie: " + newCookie + "(" + newCookie.ToString("x") + ")");
+                        Console.WriteLine($"[NEW] _EPROCESS.cookie: {newCookie}({newCookie:x})");
 
                         memoryIO.WriteMemory<int>(cookiePtr, oldCookie);
                         Console.WriteLine("Written = " + writtenBytes);
                     }
                 }
 
-                //Console.WriteLine($"Current Position: {memoryIO.Position}(" + memoryIO.Position.ToString("x") + ")");
+                //Console.WriteLine($"Current Position: {memoryIO.Position}({memoryIO.Position:x})");
 
                 //memoryIO.Position = ethreadPtr;
-                //Console.WriteLine($"Current Position: {memoryIO.Position}(" + memoryIO.Position.ToString("x") + ")");
+                //Console.WriteLine($"Current Position: {memoryIO.Position}({memoryIO.Position:x})");
             }
         }
 
