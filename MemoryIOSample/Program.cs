@@ -86,10 +86,10 @@ namespace MemoryIOLib
                     }
                 }
 
-                //Console.WriteLine($"Current Position: {memoryIO.Position}({memoryIO.Position:x})");
+                //Console.WriteLine($"Current Position: {memoryIO.Position}({memoryIO.Position.ToInt64():x})");
 
                 //memoryIO.Position = ethreadPtr;
-                //Console.WriteLine($"Current Position: {memoryIO.Position}({memoryIO.Position:x})");
+                //Console.WriteLine($"Current Position: {memoryIO.Position}({memoryIO.Position.ToInt64():x})");
             }
         }
 
