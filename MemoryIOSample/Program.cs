@@ -6,6 +6,7 @@ using Microsoft.Win32.SafeHandles;
 using System.Threading;
 using System.Media;
 using KernelStructOffset;
+using System.Diagnostics;
 
 namespace MemoryIOLib
 {
@@ -24,6 +25,8 @@ namespace MemoryIOLib
         {
             Console.WriteLine("Version 1.0");
 
+            int processId = Process.GetCurrentProcess().Id;
+
             using (KernelMemoryIO memoryIO = new KernelMemoryIO())
             {
                 if (memoryIO.IsInitialized == false)
@@ -32,62 +35,53 @@ namespace MemoryIOLib
                     return;
                 }
 
-                // 0xFFFF878274668080 from process explorer (Handles view pane: Ctrl+H)
+                /*
+                // 0xFFFF850953C62080 from process explorer (Handles view pane: Ctrl+H)
                 // It must be a Handle of Thead type.
-                IntPtr ethreadPtr = new IntPtr(unchecked((long)0xFFFF878274668080));
+                IntPtr ethreadPtr = new IntPtr(unchecked((long)0xFFFF850953C62080));
+                */
+
+                IntPtr ethreadPtr = GetEThread();
+
+                var ethreadOffset = DbgOffset.Get("_ETHREAD");
+                var kthreadOffset = DbgOffset.Get("_KTHREAD");
+                var eprocessOffset = DbgOffset.Get("_EPROCESS");
 
                 {
-                    IntPtr clientIdPtr = ethreadPtr + 0x648;
-                    byte[] buffer = new byte[16];
+                    //    +0x648 Cid : _CLIENT_ID
+                    IntPtr clientIdPtr = ethreadOffset.GetPointer(ethreadPtr, "Cid");
+                    _CLIENT_ID cid = memoryIO.ReadMemory<_CLIENT_ID>(clientIdPtr);
 
-                    if (memoryIO.ReadMemory(clientIdPtr, buffer) != buffer.Length)
+                    if (cid.UniqueProcess.ToInt32() != processId)
                     {
                         Console.WriteLine("failed to read");
                         return;
                     }
 
-                    long value = BitConverter.ToInt64(buffer, 0);
-                    Console.WriteLine("PID: " + value + "(" + value.ToString("x") + ")");
-                    value = BitConverter.ToInt64(buffer, 8);
-                    Console.WriteLine("TID: " + value + "(" + value.ToString("x") + ")");
+                    Console.WriteLine("PID: " + cid.UniqueProcess + "(" + cid.UniqueProcess.ToString("x") + ")");
+                    Console.WriteLine("TID: " + cid.UniqueThread + "(" + cid.UniqueThread.ToString("x") + ")");
                 }
 
                 {
-                    //    +0x220 Process          : Ptr64 _KPROCESS
-                    IntPtr kprocessPosPtr = ethreadPtr + 0x220;
-                    byte[] buffer = new byte[8];
+                    //    +0x220 Process : Ptr64 _KPROCESS
+                    IntPtr kprocessPosPtr = kthreadOffset.GetPointer(ethreadPtr, "Process");
 
-                    if (memoryIO.ReadMemory(kprocessPosPtr, buffer) != buffer.Length)
-                    {
-                        Console.WriteLine("failed to read");
-                        return;
-                    }
-
-                    IntPtr kprocessPtr = new IntPtr(BitConverter.ToInt64(buffer, 0));
+                    IntPtr kprocessPtr = memoryIO.ReadMemory<IntPtr>(kprocessPosPtr);
                     Console.WriteLine("_EPROCESS: " + kprocessPtr + "(" + kprocessPtr.ToString("x") + ")");
 
                     {
-                        IntPtr cookiePtr = kprocessPtr + 0x3d0;
-
-                        buffer = new byte[4];
-
-                        if (memoryIO.ReadMemory(cookiePtr, buffer) != buffer.Length)
-                        {
-                            Console.WriteLine("failed to read");
-                            return;
-                        }
-
-                        int oldCookie = BitConverter.ToInt32(buffer, 0);
+                        // +0x3d0 Cookie : Uint4B
+                        IntPtr cookiePtr = eprocessOffset.GetPointer(kprocessPtr, "Cookie");
+                        int oldCookie = memoryIO.ReadMemory<int>(cookiePtr);
                         Console.WriteLine("[OLD] _EPROCESS.cookie: " + oldCookie + "(" + oldCookie.ToString("x") + ")");
 
-                        int writtenBytes = memoryIO.WriteMemory(cookiePtr, BitConverter.GetBytes(0x5000));
+                        int writtenBytes = memoryIO.WriteMemory<int>(cookiePtr, 0x5000);
                         Console.WriteLine("Written = " + writtenBytes);
 
-                        memoryIO.ReadMemory(cookiePtr, buffer);
-                        int newCookie = BitConverter.ToInt32(buffer, 0);
+                        int newCookie = memoryIO.ReadMemory<int>(cookiePtr);
                         Console.WriteLine("[NEW] _EPROCESS.cookie: " + newCookie + "(" + newCookie.ToString("x") + ")");
 
-                        memoryIO.WriteMemory(cookiePtr, BitConverter.GetBytes(oldCookie));
+                        memoryIO.WriteMemory<int>(cookiePtr, oldCookie);
                         Console.WriteLine("Written = " + writtenBytes);
                     }
                 }
@@ -97,6 +91,32 @@ namespace MemoryIOLib
                 //memoryIO.Position = ethreadPtr;
                 //Console.WriteLine($"Current Position: {memoryIO.Position}(" + memoryIO.Position.ToString("x") + ")");
             }
+        }
+
+        private static IntPtr GetEThread()
+        {
+            int processId = Process.GetCurrentProcess().Id;
+
+            using (WindowsHandleInfo whi = new WindowsHandleInfo())
+            {
+                for (int i = 0; i < whi.HandleCount; i++)
+                {
+                    var she = whi[i];
+
+                    if (she.OwnerPid != processId)
+                    {
+                        continue;
+                    }
+
+                    string objName = she.GetName(out string handleTypeName);
+                    if (handleTypeName == "Thread")
+                    {
+                        return she.ObjectPointer;
+                    }
+                }
+            }
+
+            return IntPtr.Zero;
         }
     }
 }
