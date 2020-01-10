@@ -121,21 +121,29 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
             }
             else
             {
+                SIZE_T numberOfBytesTransferred = 0;
                 PUCHAR ptr = BytesToPtr(ioBuffer);
-                deviceExtension->Position = ptr;
 
                 /*
+                deviceExtension->Position = ptr;
+
                 PUCHAR outBuffer = (PUCHAR)ioBuffer;
                 for (ULONG i = 0; i < outBufLength; i++)
                 {
                     outBuffer[i] = *(ptr + i);
                 }
+                numberOfBytesTransferred = outBufLength;
+                */
+
+                /*
+                // For Windows 7
+                deviceExtension->Position = ptr;
+                RtlCopyMemory(ioBuffer, deviceExtension->Position, outBufLength);
+                numberOfBytesTransferred = outBufLength;
                 */
 
                 MM_COPY_ADDRESS address;
                 address.VirtualAddress = ptr;
-
-                SIZE_T numberOfBytesTransferred = 0;
                 MmCopyMemory(ioBuffer, address, outBufLength, MM_COPY_MEMORY_VIRTUAL, &numberOfBytesTransferred);
 
                 pIrp->IoStatus.Information = numberOfBytesTransferred;
@@ -150,10 +158,16 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
             }
             else
             {
+                SIZE_T numberOfBytesTransferred = 0;
+
+                /*
+                // For Windows 7
+                RtlCopyMemory(ioBuffer, &deviceExtension->Position, ptrSize);
+                numberOfBytesTransferred = ptrSize;
+                */
+
                 MM_COPY_ADDRESS address;
                 address.VirtualAddress = &deviceExtension->Position;
-
-                SIZE_T numberOfBytesTransferred = 0;
                 MmCopyMemory(ioBuffer, address, ptrSize, MM_COPY_MEMORY_VIRTUAL, &numberOfBytesTransferred);
 
                 pIrp->IoStatus.Information = numberOfBytesTransferred;
@@ -182,6 +196,7 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
             }
             else
             {
+                SIZE_T numberOfBytesTransferred = 0;
                 PUCHAR ptr = deviceExtension->Position;
 
                 /*
@@ -192,13 +207,17 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
                 }
                 */
 
+                /*
+                // For Windows 7
+                RtlCopyMemory(deviceExtension->Position, ioBuffer, inBufLength);
+                numberOfBytesTransferred = inBufLength;
+                */
+
                 MM_COPY_ADDRESS address;
                 address.VirtualAddress = ioBuffer;
-
-                SIZE_T numberOfBytesTransferred = 0;
                 MmCopyMemory(ptr, address, inBufLength, MM_COPY_MEMORY_VIRTUAL, &numberOfBytesTransferred);
-                pIrp->IoStatus.Information = numberOfBytesTransferred;
 
+                pIrp->IoStatus.Information = numberOfBytesTransferred;
                 ntStatus = STATUS_SUCCESS;
             }
             break;
