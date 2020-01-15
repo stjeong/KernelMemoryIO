@@ -172,6 +172,9 @@
   <ItemGroup>
     <ClInclude Include="MemoryIO.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="register_device.bat" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
