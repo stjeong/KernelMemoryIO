@@ -114,6 +114,41 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
 
     switch (irpSp->Parameters.DeviceIoControl.IoControlCode)
     {
+        case IOCTL_READ_PORT_UCHAR:
+            if ((inBufLength >= 2) && (outBufLength >= 1))
+            {
+                PUSHORT ShortBuffer = (PUSHORT)ioBuffer;
+                PUCHAR CharBuffer = (PUCHAR)ioBuffer;
+
+                UCHAR Value = READ_PORT_UCHAR((PUCHAR)ShortBuffer[0]);
+                CharBuffer[0] = Value;
+            }
+            else
+            {
+                ntStatus = STATUS_BUFFER_TOO_SMALL;
+            }
+
+            pIrp->IoStatus.Information = 1; /* Output Buffer Size */
+            ntStatus = STATUS_SUCCESS;
+            break;
+
+        case IOCTL_WRITE_PORT_UCHAR:
+            if (inBufLength >= 3)
+            {
+                PUSHORT ShortBuffer = (PUSHORT)ioBuffer;
+                PUCHAR CharBuffer = (PUCHAR)ioBuffer;
+
+                WRITE_PORT_UCHAR((PUCHAR)ShortBuffer[0], CharBuffer[2]);
+            }
+            else
+            {
+                ntStatus = STATUS_BUFFER_TOO_SMALL;
+            }
+
+            pIrp->IoStatus.Information = 0; /* Output Buffer Size */
+            ntStatus = STATUS_SUCCESS;
+            break;
+
         case IOCTL_READ_MEMORY:
             if (inBufLength != ptrSize)
             {
