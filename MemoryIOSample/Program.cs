@@ -21,7 +21,7 @@ namespace MemoryIOLib
         // net start KernelMemoryIO
         // net stop KernelMemoryIO
 
-        static void Main(string[] args)
+        static void Main(string[] _)
         {
             Console.WriteLine("Version 1.0");
 
@@ -108,7 +108,7 @@ namespace MemoryIOLib
                         continue;
                     }
 
-                    string objName = she.GetName(out string handleTypeName);
+                    string _ = she.GetName(out string handleTypeName);
                     if (handleTypeName == "Thread")
                     {
                         return she.ObjectPointer;
