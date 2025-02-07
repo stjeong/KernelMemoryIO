@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Runtime.InteropServices;
-using Microsoft.Win32.SafeHandles;
-using System.Threading;
-using System.Media;
-using KernelStructOffset;
+﻿using KernelStructOffset;
+using System;
 using System.Diagnostics;
 
 namespace MemoryIOLib
