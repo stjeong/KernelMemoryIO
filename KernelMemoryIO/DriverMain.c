@@ -17,6 +17,9 @@ extern "C"
 
 #include "MemoryIO.h"
 
+#define CONFIG_CMD(bus, dev_fn, where) \
+ (0x80000000 | (((ULONG)(bus)) << 16) | (((dev_fn) & 0x1F) << 11) | (((dev_fn) & 0xE0) << 3) | ((where) & ~3))
+
 VOID DriverUnload(PDRIVER_OBJECT pDriverObject)
 {
     UNICODE_STRING uniDOSString;
@@ -115,13 +118,12 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
     switch (irpSp->Parameters.DeviceIoControl.IoControlCode)
     {
         case IOCTL_READ_PORT_UCHAR:
-            if ((inBufLength >= 2) && (outBufLength >= 1))
+            if ((inBufLength >= 1) && (outBufLength >= 1))
             {
-                PUSHORT ShortBuffer = (PUSHORT)ioBuffer;
-                PUCHAR CharBuffer = (PUCHAR)ioBuffer;
+                UCHAR portBuffer = *(PUCHAR)ioBuffer;
+                PUCHAR dataBuffer = (PUCHAR)ioBuffer;
 
-                UCHAR Value = READ_PORT_UCHAR((PUCHAR)ShortBuffer[0]);
-                CharBuffer[0] = Value;
+                dataBuffer[0] = READ_PORT_UCHAR((PUCHAR)portBuffer);
             }
             else
             {
@@ -132,13 +134,49 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
             ntStatus = STATUS_SUCCESS;
             break;
 
+        case IOCTL_READ_PORT_USHORT:
+            if ((inBufLength >= 2) && (outBufLength >= 2))
+            {
+                USHORT portBuffer = *(PUSHORT)ioBuffer;
+                PUSHORT shortBuffer = (PUSHORT)ioBuffer;
+
+                shortBuffer[0] = READ_PORT_USHORT((PUSHORT)portBuffer);
+            }
+            else
+            {
+                ntStatus = STATUS_BUFFER_TOO_SMALL;
+            }
+
+            pIrp->IoStatus.Information = 2; /* Output Buffer Size */
+            ntStatus = STATUS_SUCCESS;
+            break;
+
+        case IOCTL_READ_PORT_ULONG:
+            if ((inBufLength >= 4) && (outBufLength >= 4))
+            {
+                ULONG portBuffer = *(PULONG)ioBuffer;
+                PULONG longBuffer = (PULONG)ioBuffer;
+
+                longBuffer[0] = READ_PORT_ULONG((PULONG)portBuffer);
+                DbgPrint("IOCTL_READ_PORT_ULONG: port: %x, cmd: %x\n", portBuffer,
+                    longBuffer[1]);
+            }
+            else
+            {
+                ntStatus = STATUS_BUFFER_TOO_SMALL;
+            }
+
+            pIrp->IoStatus.Information = 4; /* Output Buffer Size */
+            ntStatus = STATUS_SUCCESS;
+            break;
+
         case IOCTL_WRITE_PORT_UCHAR:
             if (inBufLength >= 3)
             {
-                PUSHORT ShortBuffer = (PUSHORT)ioBuffer;
-                PUCHAR CharBuffer = (PUCHAR)ioBuffer;
+                PUSHORT portBuffer = (PUSHORT)ioBuffer;
+                PUCHAR dataBuffer = (PUCHAR)ioBuffer;
 
-                WRITE_PORT_UCHAR((PUCHAR)ShortBuffer[0], CharBuffer[2]);
+                WRITE_PORT_UCHAR((PUCHAR)portBuffer[0], dataBuffer[2]);
             }
             else
             {
@@ -147,6 +185,57 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
 
             pIrp->IoStatus.Information = 0; /* Output Buffer Size */
             ntStatus = STATUS_SUCCESS;
+            break;
+
+        case IOCTL_WRITE_PORT_USHORT:
+            if (inBufLength >= 4)
+            {
+                PUSHORT portBuffer = (PUSHORT)ioBuffer;
+                PUSHORT dataBuffer = (PUSHORT)ioBuffer;
+
+                WRITE_PORT_USHORT((PUSHORT)portBuffer, dataBuffer[1]);
+            }
+            else
+            {
+                ntStatus = STATUS_BUFFER_TOO_SMALL;
+            }
+
+            pIrp->IoStatus.Information = 0; /* Output Buffer Size */
+            ntStatus = STATUS_SUCCESS;
+            break;
+
+        case IOCTL_WRITE_PORT_ULONG:
+            if (inBufLength >= 8)
+            {
+                PULONG portBuffer = (PULONG)ioBuffer;
+                PULONG dataBuffer = (PULONG)ioBuffer;
+
+                WRITE_PORT_ULONG((PULONG)portBuffer[0], dataBuffer[1]);
+
+                DbgPrint("KernelMemoryIO Test: port: %x, cmd: %x\n", portBuffer[0],
+                    dataBuffer[1]);
+            }
+            else
+            {
+                ntStatus = STATUS_BUFFER_TOO_SMALL;
+            }
+
+            pIrp->IoStatus.Information = 0; /* Output Buffer Size */
+            ntStatus = STATUS_SUCCESS;
+            break;
+
+        case IOCTL_KMIO_TEST:
+            {
+                ULONG configCmd = CONFIG_CMD(0, 0, 0);
+                ULONG port = 0xcf8;
+                WRITE_PORT_ULONG((ULONG*)port, configCmd);
+                ULONG result = READ_PORT_ULONG((ULONG*)0xcfc);
+
+                DbgPrint("KernelMemoryIO Test: port: %x, cmd: %x, %d, %x\n", port, configCmd, result, result);
+
+                pIrp->IoStatus.Information = 0; /* Output Buffer Size */
+                ntStatus = STATUS_SUCCESS;
+            }
             break;
 
         case IOCTL_READ_MEMORY:
