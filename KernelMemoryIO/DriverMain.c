@@ -81,14 +81,14 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING pRegistryPath
     return STATUS_SUCCESS;
 }
 
-PUCHAR BytesToPtr(PVOID ioBuffer)
+PUCHAR BytesToPtr(PVOID ioBuffer, int ptrSize)
 {
     PUCHAR copyPtr = NULL;
 
 #if defined(_AMD64_)
-    memcpy(&(__int64)copyPtr, ioBuffer, 8);
+    memcpy(&(__int64)copyPtr, ioBuffer, ptrSize);
 #else
-    memcpy(&copyPtr, ioBuffer, 8);
+    memcpy(&copyPtr, ioBuffer, ptrSize);
 #endif
 
     return copyPtr;
@@ -158,8 +158,6 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
                 PULONG longBuffer = (PULONG)ioBuffer;
 
                 longBuffer[0] = READ_PORT_ULONG((PULONG)portBuffer);
-                DbgPrint("IOCTL_READ_PORT_ULONG: port: %x, cmd: %x\n", portBuffer,
-                    longBuffer[1]);
             }
             else
             {
@@ -225,16 +223,55 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
             break;
 
         case IOCTL_KMIO_TEST:
+            //{
+            //    ULONG configCmd = CONFIG_CMD(0, 0, 0);
+            //    ULONG port = 0xcf8;
+            //    WRITE_PORT_ULONG((ULONG*)port, configCmd);
+            //    ULONG result = READ_PORT_ULONG((ULONG*)0xcfc);
+
+            //    DbgPrint("KernelMemoryIO Test: port: %x, cmd: %x, %d, %x\n", port, configCmd, result, result);
+
+            //    pIrp->IoStatus.Information = 0; /* Output Buffer Size */
+            //    ntStatus = STATUS_SUCCESS;
+            //}
             {
-                ULONG configCmd = CONFIG_CMD(0, 0, 0);
-                ULONG port = 0xcf8;
-                WRITE_PORT_ULONG((ULONG*)port, configCmd);
-                ULONG result = READ_PORT_ULONG((ULONG*)0xcfc);
+                // MmMapIoSpaceEx(0x80000000, 0x1000, MmNonCached);
+            }
+            break;
 
-                DbgPrint("KernelMemoryIO Test: port: %x, cmd: %x, %d, %x\n", port, configCmd, result, result);
+        case IOCTL_READ_PHYSICAL_MEMORY:
+            if (inBufLength != ptrSize)
+            {
+                ntStatus = STATUS_BUFFER_TOO_SMALL;
+            }
+            else 
+            {
+                PVOID physicalAddress = (PVOID)BytesToPtr(ioBuffer, ptrSize);
 
-                pIrp->IoStatus.Information = 0; /* Output Buffer Size */
-                ntStatus = STATUS_SUCCESS;
+                SIZE_T numberOfBytesTransferred = 0;
+                MM_COPY_ADDRESS address = { 0 };
+                address.PhysicalAddress.QuadPart = (ULONGLONG)physicalAddress;
+
+                ntStatus = MmCopyMemory(ioBuffer, address, outBufLength, MM_COPY_MEMORY_PHYSICAL, &numberOfBytesTransferred);
+
+                if (ntStatus != STATUS_SUCCESS)
+                {
+                    DbgPrint("KernelMemoryIO: MmCopyMemory(MM_COPY_MEMORY_PHYSICAL) failed: %x\n", ntStatus);
+
+                    PVOID ecamAddress = MmMapIoSpace(address.PhysicalAddress, outBufLength, MmNonCached);
+                    if (ecamAddress != NULL)
+                    {
+                        RtlCopyMemory(ioBuffer, ecamAddress, outBufLength);
+                        MmUnmapIoSpace(ecamAddress, outBufLength);
+
+                        pIrp->IoStatus.Information = outBufLength;
+                        ntStatus = STATUS_SUCCESS;
+                    }
+                }
+                else
+                {
+                    pIrp->IoStatus.Information = numberOfBytesTransferred;
+                }
             }
             break;
 
@@ -246,18 +283,7 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
             else
             {
                 SIZE_T numberOfBytesTransferred = 0;
-                PUCHAR ptr = BytesToPtr(ioBuffer);
-
-                /*
-                deviceExtension->Position = ptr;
-
-                PUCHAR outBuffer = (PUCHAR)ioBuffer;
-                for (ULONG i = 0; i < outBufLength; i++)
-                {
-                    outBuffer[i] = *(ptr + i);
-                }
-                numberOfBytesTransferred = outBufLength;
-                */
+                PUCHAR ptr = BytesToPtr(ioBuffer, ptrSize);
 
                 /*
                 // For Windows 7
@@ -306,7 +332,7 @@ NTSTATUS MajorDeviceControl(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
             }
             else
             {
-                PUCHAR ptr = BytesToPtr(ioBuffer);
+                PUCHAR ptr = BytesToPtr(ioBuffer, ptrSize);
                 deviceExtension->Position = ptr;
 
                 ntStatus = STATUS_SUCCESS;
