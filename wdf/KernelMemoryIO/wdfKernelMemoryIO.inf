@@ -1,0 +1,58 @@
+;
+; wdfKernelMemoryIO.inf
+;
+; KMDF Non-PnP (primitive) driver
+; https://docs.microsoft.com/en-us/windows-hardware/drivers/develop/creating-a-primitive-driver
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318}
+Provider=%ManufacturerName%
+DriverVer=
+CatalogFile=wdfKernelMemoryIO.cat
+PnpLockdown=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+KernelMemoryIO.DriverFiles = 12  ; 12 == DIRID_DRIVERS (System32\drivers)
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+ 
+[SourceDisksFiles]
+wdfKernelMemoryIO.sys = 1,,
+
+[DefaultInstall.NT$ARCH$]
+CopyFiles = KernelMemoryIO.DriverFiles
+ 
+[DefaultUninstall.NT$ARCH$]
+; DelFiles = KernelMemoryIO.DriverFiles
+LegacyUninstall = 1
+
+[KernelMemoryIO.DriverFiles]
+wdfKernelMemoryIO.sys
+
+[DefaultInstall.NT$ARCH$.Services]
+AddService = KernelMemoryIO,,KernelMemoryIO.Service
+
+[DefaultUninstall.NT$ARCH$.Services]
+DelService = KernelMemoryIO,0x200
+
+[KernelMemoryIO.Service]
+DisplayName    = %ServiceDescription%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\wdfKernelMemoryIO.sys
+
+[DefaultInstall.NT$ARCH$.Wdf]
+KmdfService = KernelMemoryIO, KernelMemoryIO_wdfsect
+
+[KernelMemoryIO_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+ManufacturerName="<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+DiskName="KernelMemoryIO Source Disk"
+ServiceDescription="KernelMemoryIO KMDF Driver"

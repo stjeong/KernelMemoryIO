@@ -1,6 +1,7 @@
 ﻿using KernelStructOffset;
 using System;
 using System.Diagnostics;
+using System.Security.Principal;
 
 namespace MemoryIOLib
 {
@@ -19,7 +20,16 @@ namespace MemoryIOLib
         {
             Console.WriteLine("Version 1.0");
 
+            if (IsAdministrator() == false)
+            {
+                Console.WriteLine("You must run this program as administrator.");
+                return;
+            }
+
+            Privileges.EnableSeDebug();
+
             int processId = Process.GetCurrentProcess().Id;
+            Console.WriteLine($"Current Process Id: {processId}, 0x{processId:x}");
 
             using (KernelMemoryIO memoryIO = new KernelMemoryIO())
             {
@@ -36,6 +46,7 @@ namespace MemoryIOLib
                 */
 
                 IntPtr ethreadPtr = GetEThread();
+                Console.WriteLine($"_ETHREAD: ({ethreadPtr.ToInt64():x})");
 
                 var ethreadOffset = DbgOffset.Get("_ETHREAD");
                 var kthreadOffset = DbgOffset.Get("_KTHREAD");
@@ -48,7 +59,7 @@ namespace MemoryIOLib
 
                     if (cid.UniqueProcess.ToInt32() != processId)
                     {
-                        Console.WriteLine("failed to read");
+                        Console.WriteLine($"failed to read");
                         return;
                     }
 
@@ -79,11 +90,6 @@ namespace MemoryIOLib
                         Console.WriteLine("Written = " + writtenBytes);
                     }
                 }
-
-                //Console.WriteLine($"Current Position: {memoryIO.Position}({memoryIO.Position.ToInt64():x})");
-
-                //memoryIO.Position = ethreadPtr;
-                //Console.WriteLine($"Current Position: {memoryIO.Position}({memoryIO.Position.ToInt64():x})");
             }
         }
 
@@ -111,6 +117,19 @@ namespace MemoryIOLib
             }
 
             return IntPtr.Zero;
+        }
+
+        static bool IsAdministrator()
+        {
+            WindowsIdentity identity = WindowsIdentity.GetCurrent();
+
+            if (null != identity)
+            {
+                WindowsPrincipal principal = new WindowsPrincipal(identity);
+                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+            }
+
+            return false;
         }
     }
 }
