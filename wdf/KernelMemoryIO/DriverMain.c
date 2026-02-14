@@ -61,7 +61,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
     }
 
     WdfDeviceInitSetDeviceType(deviceInit, FILE_DEVICE_UNKNOWN);
-    WdfDeviceInitSetExclusive(deviceInit, FALSE);
+    WdfDeviceInitSetExclusive(deviceInit, TRUE);
     WdfDeviceInitSetIoType(deviceInit, WdfDeviceIoBuffered);
 
     RtlInitUnicodeString(&uniNameString, DEVICE_NAME);

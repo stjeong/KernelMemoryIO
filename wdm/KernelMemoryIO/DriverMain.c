@@ -53,7 +53,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING pRegistryPath
         &uniNameString,
         FILE_DEVICE_UNKNOWN,
         0,
-        FALSE,
+        TRUE,
         &DeviceObject);
 
     if (NT_SUCCESS(ntStatus) == FALSE)
